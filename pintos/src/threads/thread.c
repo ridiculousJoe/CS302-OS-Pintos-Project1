@@ -201,7 +201,9 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  
+  /* TODO: add more judgements  */
+  thread_yield ();
   return tid;
 }
 
@@ -360,6 +362,8 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  /* TODO: add more judgements  */
+  thread_yield ();  /* Yield the thread for each change in its priority.  */
 }
 
 /* Returns the current thread's priority. */
