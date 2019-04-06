@@ -94,6 +94,15 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    int64_t ticks_sleep;                /* remaining ticks for threads to sleep. */
+    int base_priority;                  /* the base priority of a thread.  */
+
+    /* All the locks held by a thread.  */
+    struct list locks;
+
+    /* The lock the thread is currently waiting for.  */
+    struct lock *lock_waiting;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -120,6 +129,9 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
+bool thread_priority_cmp (const struct list_elem *a,
+  const struct list_elem *b, void *aux);
+
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
@@ -130,6 +142,8 @@ void thread_yield (void);
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
+
+void check_blocked_thread (struct thread *t, void *aux);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
