@@ -178,6 +178,19 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+  if (thread_mlfqs)
+  {
+    thread_mlfqs_increase_recent_cpu_by_one ();
+    if (ticks % TIMER_FREQ == 0)
+    {
+      thread_mlfqs_update_load_avg ();
+      thread_mlfqs_update_recent_cpu ();
+    }
+    if (ticks % 4 == 0)
+      thread_mlfqs_update_priority (thread_current ());
+  }
+
   thread_foreach (check_blocked_thread, NULL);
 }
 
