@@ -635,9 +635,9 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 bool thread_priority_cmp (const struct list_elem *a,
   const struct list_elem *b, void *aux)
 {
-	struct thread *t1 = list_entry(a, struct thread, elem);
-	struct thread *t2 = list_entry(b, struct thread, elem);
-	return t1->priority > t2->priority;
+	struct thread *ta = list_entry(a, struct thread, elem);
+	struct thread *tb = list_entry(b, struct thread, elem);
+	return ta->priority > tb->priority;
 }
 
 /* Check and update ticks_sleep for each blocked thread  */
