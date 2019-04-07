@@ -340,9 +340,25 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-  /* TODO: add more judgements  */
-  thread_yield ();  /* Yield the thread for each change in its priority.  */
+  enum intr_level old_level = intr_disable ();
+  /* Normally, donation will not be invoked here, since priority cannot be
+    set when the thread is being blocked. */
+  if (!thread_mlfqs)
+  {
+    thread_current ()->base_priority = new_priority;
+    if (new_priority > thread_current ()->priority)
+    {
+      thread_current ()->priority = new_priority;
+    }
+    else
+    {
+      priority_update ();
+    }
+
+    /* TODO: add more judgements  */
+    thread_yield ();  /* Yield the thread for each change in its priority.  */
+  }
+  intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -641,8 +657,9 @@ void thread_donate_priority (void)
 {
 	struct thread *t = thread_current();
 	struct lock *l = t->lock_waiting;
-	while (l && l->holder->priority < t->priority)
+	while (l && l->holder && l->holder->priority < t->priority)
 	{
+		/* Need to sort waiters before unblock threads. */
 		l->holder->priority = t->priority;
 		t = l->holder;
 		l = t->lock_waiting;
