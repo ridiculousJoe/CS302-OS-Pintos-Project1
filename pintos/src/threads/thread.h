@@ -95,13 +95,15 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     int64_t ticks_sleep;                /* remaining ticks for threads to sleep. */
-    int base_priority;                  /* the base priority of a thread.  */
+    
+    /* Priority Scheduling */
+    int base_priority;  /* The base priority of this thread. */
 
-    /* All the locks held by a thread.  */
-    struct list locks;
+    struct lock *lock_waiting;  /* The lock this thread is currently waiting for. */
 
-    /* The lock the thread is currently waiting for.  */
-    struct lock *lock_waiting;
+    struct list donators;  /* List of threads wanting the locks held by this thread. */
+
+    struct list_elem donators_elem;  /* List element for donators list. */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -129,9 +131,6 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
-bool thread_priority_cmp (const struct list_elem *a,
-  const struct list_elem *b, void *aux);
-
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
@@ -143,8 +142,6 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
-void check_blocked_thread (struct thread *t, void *aux);
-
 int thread_get_priority (void);
 void thread_set_priority (int);
 
@@ -152,5 +149,16 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+bool thread_priority_cmp (const struct list_elem *a,
+  const struct list_elem *b, void *aux);
+
+void check_blocked_thread (struct thread *t, void *aux);
+
+void thread_donate_priority (void);
+
+void donators_release (struct lock *lock);
+
+void priority_update (void);
 
 #endif /* threads/thread.h */

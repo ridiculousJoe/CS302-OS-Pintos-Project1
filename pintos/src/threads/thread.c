@@ -246,15 +246,6 @@ thread_unblock (struct thread *t)
   intr_set_level (old_level);
 }
 
-/* Comparator for thread priority, used for list_insert_ordered.  */
-bool thread_priority_cmp (const struct list_elem *a,
-  const struct list_elem *b, void *aux)
-{
-	struct thread *t1 = list_entry(a, struct thread, elem);
-	struct thread *t2 = list_entry(b, struct thread, elem);
-	return t1->priority > t2->priority;
-}
-
 /* Returns the name of the running thread. */
 const char *
 thread_name (void) 
@@ -343,18 +334,6 @@ thread_foreach (thread_action_func *func, void *aux)
       struct thread *t = list_entry (e, struct thread, allelem);
       func (t, aux);
     }
-}
-
-/* Check and update ticks_sleep for each blocked thread  */
-void check_blocked_thread (struct thread *t, void *aux)
-{
-	if (t->status == THREAD_BLOCKED && t->ticks_sleep > 0)
-	{
-		if (--(t->ticks_sleep) == 0)
-		{
-			thread_unblock(t);
-		}
-	}
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -492,9 +471,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
+  /* Priority Scheduling */
   t->base_priority = priority;  /* Initialize base priority to be priority.  */
-  list_init (&t->locks);
   t->lock_waiting = NULL;
+  list_init (&t->donators);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -633,3 +613,67 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+
+/* Comparator for thread priority, used for list_insert_ordered. */
+bool thread_priority_cmp (const struct list_elem *a,
+  const struct list_elem *b, void *aux)
+{
+	struct thread *t1 = list_entry(a, struct thread, elem);
+	struct thread *t2 = list_entry(b, struct thread, elem);
+	return t1->priority > t2->priority;
+}
+
+/* Check and update ticks_sleep for each blocked thread  */
+void check_blocked_thread (struct thread *t, void *aux)
+{
+	if (t->status == THREAD_BLOCKED && t->ticks_sleep > 0)
+	{
+		if (--(t->ticks_sleep) == 0)
+		{
+			thread_unblock(t);
+		}
+	}
+}
+
+/* Iteratively donate priorities through donators. */
+void thread_donate_priority (void)
+{
+	struct thread *t = thread_current();
+	struct lock *l = t->lock_waiting;
+	while (l && l->holder->priority < t->priority)
+	{
+		l->holder->priority = t->priority;
+		t = l->holder;
+		l = t->lock_waiting;
+	}
+}
+
+/* Release donators as soon as releasing locks. */
+void donators_release (struct lock *lock)
+{
+	struct list_elem *e;
+	struct list_elem *e_next;
+	struct thread *t = thread_current ();
+	for (e = list_begin(&t->donators); e != list_end(&t->donators); e = e_next)
+	{
+		struct thread *donator = list_entry(e, struct thread, donators_elem);
+		e_next = list_next(e);
+		if (donator->lock_waiting == lock)
+			list_remove(e);
+	}
+}
+
+/* Update priorities as soon as changing donators. */
+void priority_update (void)
+{
+	struct thread *t = thread_current ();
+	t->priority = t->base_priority;
+	if (!list_empty(&t->donators))
+	{
+		struct thread *max_donator = list_entry(list_front(&t->donators),
+			struct thread, donators_elem);
+		if (t->priority < max_donator->priority)
+			t->priority = max_donator->priority;
+	}
+}
