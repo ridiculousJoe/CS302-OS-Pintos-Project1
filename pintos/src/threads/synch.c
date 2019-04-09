@@ -70,8 +70,7 @@ sema_down (struct semaphore *sema)
     {
       if (!thread_mlfqs)
         thread_donate_priority ();
-      list_insert_ordered (&sema->waiters, &thread_current ()->elem, (list_less_func *) &thread_priority_cmp, NULL);
-      // list_push_back (&sema->waiters, &thread_current ()->elem);
+      list_push_back (&sema->waiters, &thread_current ()->elem);
       thread_block ();
     }
   sema->value--;
@@ -123,7 +122,7 @@ sema_up (struct semaphore *sema)
                                 struct thread, elem));
   }
   sema->value++;
-  thread_yield ();
+  thread_yield_test ();
   intr_set_level (old_level);
 }
 
@@ -208,8 +207,7 @@ lock_acquire (struct lock *lock)
   if (!thread_mlfqs && lock->holder)
   {
     thread_current()->lock_waiting = lock;
-    list_insert_ordered (&lock->holder->donators, &thread_current()->donators_elem, (list_less_func *) &thread_priority_cmp, NULL);
-    // list_push_back (&lock->holder->donators, &thread_current()->donators_elem);
+    list_push_back (&lock->holder->donators, &thread_current()->donators_elem);
   }
   sema_down (&lock->semaphore);
   thread_current()->lock_waiting = NULL;
@@ -322,10 +320,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  /* TODO: thread is added to waiters thereafter, no need to insert ordered here */
-  list_insert_ordered (&cond->waiters, &waiter.elem, 
-    (list_less_func *) &cond_priority_cmp, NULL);
-  // list_push_back(&cond->waiters, &waiter.elem);
+  /* Thread is added to waiters thereafter, no need to insert ordered here */
+  list_push_back(&cond->waiters, &waiter.elem);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);

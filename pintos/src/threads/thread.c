@@ -209,8 +209,7 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
   
-  /* TODO: add more judgements  */
-  thread_yield ();
+  thread_yield_test ();
   return tid;
 }
 
@@ -247,7 +246,6 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  // list_push_back (&ready_list, &t->elem);
   list_insert_ordered (&ready_list, &t->elem, (list_less_func *) &thread_priority_cmp, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -319,7 +317,6 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    // list_push_back (&ready_list, &cur->elem);
     list_insert_ordered (&ready_list, &cur->elem, (list_less_func *) &thread_priority_cmp, NULL);
   cur->status = THREAD_READY;
   schedule ();
@@ -362,8 +359,7 @@ thread_set_priority (int new_priority)
       priority_update ();
     }
 
-    /* TODO: add more judgements  */
-    thread_yield ();  /* Yield the thread for each change in its priority.  */
+    thread_yield_test ();  /* Yield the thread for each change in its priority.  */
   }
   intr_set_level (old_level);
 }
@@ -382,8 +378,7 @@ thread_set_nice (int nice UNUSED)
   enum intr_level old_level = intr_disable ();
   thread_current ()->nice = nice;
   thread_mlfqs_update_priority (thread_current ());
-  /* thread_yield_test */
-  thread_yield ();
+  thread_yield_test ();
   intr_set_level (old_level);
 }
 
@@ -665,6 +660,19 @@ void check_blocked_thread (struct thread *t, void *aux)
 	}
 }
 
+/* Test if thread_yield () is necessary. */
+void thread_yield_test (void)
+{
+  if (!list_empty(&ready_list))
+  {
+    struct thread *t = list_entry(list_front(&ready_list), struct thread, elem);
+    if (t->priority > thread_current()->priority)
+    {
+      thread_yield();
+    }
+  }
+}
+
 /* Comparator for thread priority, used for list_insert_ordered. */
 bool thread_priority_cmp (const struct list_elem *a,
   const struct list_elem *b, void *aux)
@@ -681,7 +689,9 @@ void thread_donate_priority (void)
 	struct lock *l = t->lock_waiting;
 	while (l && l->holder && l->holder->priority < t->priority)
 	{
-		/* Need to sort waiters before unblock threads. */
+    /* Since donations are not ordered operations: */
+		/* Need to sort waiters before unblocking threads. */
+    /* Need to sort donators before updating priorities. */
 		l->holder->priority = t->priority;
 		t = l->holder;
 		l = t->lock_waiting;
@@ -710,6 +720,7 @@ void priority_update (void)
 	t->priority = t->base_priority;
 	if (!list_empty(&t->donators))
 	{
+    list_sort(&t->donators, (list_less_func *) &thread_priority_cmp, NULL);
 		struct thread *max_donator = list_entry(list_front(&t->donators),
 			struct thread, donators_elem);
 		if (t->priority < max_donator->priority)
