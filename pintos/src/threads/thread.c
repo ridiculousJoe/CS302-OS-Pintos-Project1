@@ -503,7 +503,7 @@ init_thread (struct thread *t, const char *name, int priority)
   /* Priority Scheduling */
   t->base_priority = priority;  /* Initialize base priority to be priority.  */
   t->lock_waiting = NULL;
-  list_init (&t->donators);
+  list_init (&t->donors);
 
   /* MLFQS */
   t->nice = 0;
@@ -682,7 +682,7 @@ bool thread_priority_cmp (const struct list_elem *a,
   return ta->priority > tb->priority;
 }
 
-/* Iteratively donate priorities through donators. */
+/* Iteratively donate priorities through donors. */
 void thread_donate_priority (void)
 {
 	struct thread *t = thread_current();
@@ -691,40 +691,40 @@ void thread_donate_priority (void)
 	{
     /* Since donations are not ordered operations: */
 		/* Need to sort waiters before unblocking threads. */
-    /* Need to sort donators before updating priorities. */
+    /* Need to sort donors before updating priorities. */
 		l->holder->priority = t->priority;
 		t = l->holder;
 		l = t->lock_waiting;
 	}
 }
 
-/* Release donators as soon as releasing locks. */
-void donators_release (struct lock *lock)
+/* Release donors as soon as releasing locks. */
+void donors_release (struct lock *lock)
 {
 	struct list_elem *e;
 	struct list_elem *e_next;
 	struct thread *t = thread_current ();
-	for (e = list_begin(&t->donators); e != list_end(&t->donators); e = e_next)
+	for (e = list_begin(&t->donors); e != list_end(&t->donors); e = e_next)
 	{
-		struct thread *donator = list_entry(e, struct thread, donators_elem);
+		struct thread *donor = list_entry(e, struct thread, donors_elem);
 		e_next = list_next(e);
-		if (donator->lock_waiting == lock)
+		if (donor->lock_waiting == lock)
 			list_remove(e);
 	}
 }
 
-/* Update priorities as soon as changing donators. */
+/* Update priorities as soon as changing donors. */
 void priority_update (void)
 {
 	struct thread *t = thread_current ();
 	t->priority = t->base_priority;
-	if (!list_empty(&t->donators))
+	if (!list_empty(&t->donors))
 	{
-    list_sort(&t->donators, (list_less_func *) &thread_priority_cmp, NULL);
-		struct thread *max_donator = list_entry(list_front(&t->donators),
-			struct thread, donators_elem);
-		if (t->priority < max_donator->priority)
-			t->priority = max_donator->priority;
+    list_sort(&t->donors, (list_less_func *) &thread_priority_cmp, NULL);
+		struct thread *max_donor = list_entry(list_front(&t->donors),
+			struct thread, donors_elem);
+		if (t->priority < max_donor->priority)
+			t->priority = max_donor->priority;
 	}
 }
 

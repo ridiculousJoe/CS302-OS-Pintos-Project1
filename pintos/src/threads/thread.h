@@ -102,9 +102,9 @@ struct thread
 
     struct lock *lock_waiting;  /* The lock this thread is currently waiting for. */
 
-    struct list donators;  /* List of threads wanting the locks held by this thread. */
+    struct list donors;  /* List of threads wanting the locks held by this thread. */
 
-    struct list_elem donators_elem;  /* List element for donators list. */
+    struct list_elem donors_elem;  /* List element for donors list. */
 
     /* MLFQS */
     int nice;  /* A nice value between -20 and 20 for each thread. */
@@ -167,7 +167,7 @@ bool thread_priority_cmp (const struct list_elem *a,
 
 void thread_donate_priority (void);
 
-void donators_release (struct lock *lock);
+void donors_release (struct lock *lock);
 
 void priority_update (void);
 

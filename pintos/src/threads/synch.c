@@ -207,7 +207,7 @@ lock_acquire (struct lock *lock)
   if (!thread_mlfqs && lock->holder)
   {
     thread_current()->lock_waiting = lock;
-    list_push_back (&lock->holder->donators, &thread_current()->donators_elem);
+    list_push_back (&lock->holder->donors, &thread_current()->donors_elem);
   }
   sema_down (&lock->semaphore);
   thread_current()->lock_waiting = NULL;
@@ -251,9 +251,9 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
   if (!thread_mlfqs)
   {
-    /* Release donators as soon as releasing locks. */
-    donators_release (lock);
-    /* Update priorities as soon as changing donators. */
+    /* Release donors as soon as releasing locks. */
+    donors_release (lock);
+    /* Update priorities as soon as changing donors. */
     priority_update ();
   }
   sema_up (&lock->semaphore);
