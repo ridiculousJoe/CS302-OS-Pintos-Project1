@@ -69,7 +69,10 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0) 
     {
       if (!thread_mlfqs)
+      {
         thread_donate_priority ();
+        thread_yield_test ();
+      }
       list_push_back (&sema->waiters, &thread_current ()->elem);
       thread_block ();
     }

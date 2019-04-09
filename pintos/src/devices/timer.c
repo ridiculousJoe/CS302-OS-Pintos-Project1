@@ -192,6 +192,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   }
 
   thread_foreach (check_blocked_thread, NULL);
+  thread_yield_interrupt ();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

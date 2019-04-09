@@ -537,27 +537,8 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else {
-
-
- //  	// ASSERT (intr_get_level () == INTR_OFF);
- //  	struct list_elem *e;
- //  	int max_priority = -1;
- //  	struct thread *max_task;
- //  	struct thread *t;
-
-	// for (e = list_begin (&ready_list); e != list_end (&ready_list);
-	//    e = list_next (e))
-	// {
-	// 	t = list_entry (e, struct thread, elem);
-	// 	if (max_priority < t->priority) {
-	// 		max_priority = t->priority;
-	// 		max_task = t;
-	// 	}
-	// }
-	// return max_task;
+  else
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
-	}
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -660,6 +641,16 @@ void check_blocked_thread (struct thread *t, void *aux)
 	}
 }
 
+/* thread_yield for time_interrupt */
+void thread_yield_interrupt (void)
+{
+  if (intr_context())
+  {
+    if (++thread_ticks >= TIME_SLICE)
+      intr_yield_on_return ();
+  }
+}
+
 /* Test if thread_yield () is necessary. */
 void thread_yield_test (void)
 {
@@ -692,10 +683,12 @@ void thread_donate_priority (void)
     /* Since donations are not ordered operations: */
 		/* Need to sort waiters before unblocking threads. */
     /* Need to sort donors before updating priorities. */
+    /* Need to sort ready_list before yield. */
 		l->holder->priority = t->priority;
 		t = l->holder;
 		l = t->lock_waiting;
 	}
+  list_sort(&ready_list, (list_less_func *) &thread_priority_cmp, NULL);
 }
 
 /* Release donors as soon as releasing locks. */

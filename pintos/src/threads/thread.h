@@ -159,6 +159,8 @@ int thread_get_load_avg (void);
 /* Effective Alarm Clock */
 void check_blocked_thread (struct thread *t, void *aux);
 
+void thread_yield_interrupt (void);
+
 /* Priority Scheduling */
 void thread_yield_test (void);
 
